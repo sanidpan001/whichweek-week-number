@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhichWeek — Week Number Finder | What Week Number Is It Right Now?</title>
+<meta name="description" content="WhichWeek shows the current week number instantly — ISO 8601, US and Saturday-start week numbering compared side by side. Reverse lookup any year + week number to exact dates, see your quarter and weeks remaining, and print a full 52/53-week year table. Free, unlimited, no signup.">
+<meta name="keywords" content="what week number is it, week number calculator, which week of the year is it, week number finder, current week number, ISO 8601 week, US week number">
+<link rel="canonical" href="https://whichweek.example.com/">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: { ink:'#1E1B2E', inkdeep:'#141222', plum:'#6B21A8', plumdeep:'#4C1485', limey:'#BEF264', limedim:'#A3D946' },
+  fontFamily: { display:['Space Grotesk','ui-sans-serif','system-ui','sans-serif'], body:['Inter','ui-sans-serif','system-ui','sans-serif'] }
+}}};
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  html { scroll-behavior: smooth; }
+  body { background:#1E1B2E; }
+  .hero-glow { background: radial-gradient(ellipse 60% 50% at 50% 0%, rgba(107,33,168,.55), transparent 70%); }
+  .card-sheen { position:relative; overflow:hidden; }
+  .card-sheen::after { content:''; position:absolute; inset:0; background:linear-gradient(115deg, transparent 40%, rgba(190,242,100,.07) 50%, transparent 60%); pointer-events:none; }
+  .num-tabular { font-variant-numeric: tabular-nums; }
+  .faq-item summary::-webkit-details-marker { display:none; }
+  .faq-item summary { cursor:pointer; }
+  .faq-item[open] summary .faq-chev { transform: rotate(180deg); }
+  .faq-chev { transition: transform .2s; }
+  @keyframes pop { 0%{transform:scale(.96);opacity:.4} 100%{transform:scale(1);opacity:1} }
+  .pop { animation: pop .25s ease-out; }
+  @media print {
+    .no-print { display:none !important; }
+    body.print-table header,
+    body.print-table #heroSection,
+    body.print-table #finderSection,
+    body.print-table #reverseSection,
+    body.print-table #quarterSection,
+    body.print-table #seoSection,
+    body.print-table footer { display:none !important; }
+    body.print-table { background:#ffffff !important; }
+    body.print-table #tableSection { box-shadow:none !important; border:none !important; background:#fff !important; }
+    body.print-table #tableSection * { color:#000 !important; border-color:#bbb !important; }
+    #yearTable thead th { background:#eee !important; }
+  }
+</style>
+</head>
+<body id="top" class="font-body text-slate-200 antialiased">
+
+<!-- ============ HEADER ============ -->
+<header class="no-print sticky top-0 z-40 border-b border-white/10 bg-inkdeep/95 backdrop-blur">
+  <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+    <a href="#top" class="font-display text-xl font-700 font-bold tracking-tight text-limey">Which<span class="text-white">Week</span></a>
+    <nav class="flex items-center gap-5 text-sm font-medium">
+      <a href="#top" class="text-slate-300 hover:text-limey transition">Home</a>
+      <a href="https://fixoraa.tech" class="rounded-full bg-plum px-4 py-1.5 text-white hover:bg-plumdeep transition">More Tools</a>
+    </nav>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section id="heroSection" class="relative overflow-hidden">
+  <div class="hero-glow absolute inset-0"></div>
+  <div class="relative mx-auto max-w-6xl px-4 sm:px-6 pt-12 pb-8 text-center">
+    <span class="inline-flex items-center gap-2 rounded-full border border-limey/40 bg-limey/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-limey">
+      <span class="h-2 w-2 rounded-full bg-limey animate-pulse"></span> Unlimited Free Usage &middot; No signup
+    </span>
+    <p class="mt-6 text-sm font-semibold uppercase tracking-[0.3em] text-plum-300 text-purple-300">What week number is it?</p>
+    <div class="mt-2 font-display font-bold text-limey leading-none num-tabular" style="font-size:clamp(7rem,22vw,13rem)" id="heroWeek">–</div>
+    <p class="mt-1 text-lg text-slate-300">ISO-8601 week <span class="text-slate-500">&middot;</span> <span id="heroDate" class="text-white font-medium">–</span></p>
+    <div class="mt-6 flex flex-wrap items-center justify-center gap-3 text-sm">
+      <span class="rounded-xl bg-white/5 border border-white/10 px-4 py-2">US week <strong id="heroUS" class="text-limey num-tabular">–</strong></span>
+      <span class="rounded-xl bg-white/5 border border-white/10 px-4 py-2">Saturday-start week <strong id="heroSat" class="text-limey num-tabular">–</strong></span>
+      <span class="rounded-xl bg-white/5 border border-white/10 px-4 py-2">Quarter <strong id="heroQ" class="text-limey">–</strong></span>
+      <span class="rounded-xl bg-white/5 border border-white/10 px-4 py-2"><strong id="heroRemain" class="text-limey num-tabular">–</strong> weeks left</span>
+    </div>
+    <div class="mx-auto mt-6 max-w-md">
+      <div class="flex justify-between text-xs text-slate-400 mb-1"><span>Year progress</span><span id="yearPct" class="num-tabular">–</span></div>
+      <div class="h-2.5 rounded-full bg-white/10 overflow-hidden"><div id="yearBar" class="h-full rounded-full bg-gradient-to-r from-plum to-limey" style="width:0%"></div></div>
+    </div>
+    <div class="mt-8 flex flex-wrap justify-center gap-3">
+      <a href="#finderSection" class="rounded-full bg-limey px-6 py-2.5 font-semibold text-ink hover:brightness-110 transition">Check any date</a>
+      <a href="#reverseSection" class="rounded-full border border-limey/50 px-6 py-2.5 font-semibold text-limey hover:bg-limey/10 transition">Week → dates lookup</a>
+      <a href="#tableSection" class="rounded-full border border-white/20 px-6 py-2.5 font-semibold text-slate-200 hover:bg-white/5 transition">Printable year table</a>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TOP AD (verbatim) ============ -->
+<div class="no-print mx-auto max-w-6xl px-4 sm:px-6 pt-4" role="complementary" aria-label="Advertisement">
+  <div class="mx-auto text-center" style="max-width:728px">
+    <span class="block text-[10px] tracking-[0.18em] uppercase text-slate-400 mb-1.5">Advertisement</span>
+    <div class="flex justify-center overflow-hidden">
+      <div class="origin-top scale-[0.44] sm:scale-100 shrink-0">
+        <script>
+          atOptions = { 'key' : '4e68ac77881c17fe128a46565d9a4e8c', 'format' : 'iframe', 'height' : 90, 'width' : 728, 'params' : {} };
+        </script>
+        <script src="https://www.highrevenueformat.com/4e68ac77881c17fe128a46565d9a4e8c/invoke.js"></script>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOOL: DATE FINDER ============ -->
+<section id="finderSection" class="no-print mx-auto max-w-6xl px-4 sm:px-6 pt-8">
+  <div class="rounded-3xl border border-white/10 bg-inkdeep/80 p-6 sm:p-10 card-sheen">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-white">Week number for any date</h2>
+        <p class="mt-1 text-slate-400 text-sm">Pick a date — see its week number in all three systems, side by side.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <label for="dateInput" class="text-xs uppercase tracking-widest text-slate-400">Date</label>
+        <input id="dateInput" type="date" class="rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-limey/60">
+      </div>
+    </div>
+
+    <div class="mt-8 grid gap-4 md:grid-cols-3">
+      <!-- ISO card -->
+      <div class="rounded-2xl border border-plum/60 bg-gradient-to-b from-plum/25 to-transparent p-6 card-sheen">
+        <div class="flex items-center justify-between">
+          <h3 class="font-display font-bold text-white">ISO-8601</h3>
+          <span class="text-[10px] uppercase tracking-widest text-purple-300 border border-purple-300/40 rounded-full px-2.5 py-1">Mon start</span>
+        </div>
+        <div class="mt-4 font-display text-6xl font-bold text-limey num-tabular" id="isoNum">–</div>
+        <p class="text-sm text-slate-300 mt-1">Week <span id="isoNumSm" class="num-tabular">–</span> of ISO year <span id="isoYear" class="num-tabular">–</span></p>
+        <p class="mt-3 text-sm text-slate-400">Runs <span id="isoRange" class="text-slate-200 font-medium">–</span></p>
+        <p class="mt-2 text-xs text-slate-500">Week 1 = the week with the year's first Thursday. International standard.</p>
+      </div>
+      <!-- US card -->
+      <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-6 card-sheen">
+        <div class="flex items-center justify-between">
+          <h3 class="font-display font-bold text-white">US Traditional</h3>
+          <span class="text-[10px] uppercase tracking-widest text-slate-300 border border-white/25 rounded-full px-2.5 py-1">Sun start</span>
+        </div>
+        <div class="mt-4 font-display text-6xl font-bold text-white num-tabular" id="usNum">–</div>
+        <p class="text-sm text-slate-300 mt-1">Week <span id="usNumSm" class="num-tabular">–</span> of calendar year <span id="usYear" class="num-tabular">–</span></p>
+        <p class="mt-3 text-sm text-slate-400">Runs <span id="usRange" class="text-slate-200 font-medium">–</span></p>
+        <p class="mt-2 text-xs text-slate-500">Week 1 starts on the year's first Sunday; days before are week 0. Common in North America.</p>
+      </div>
+      <!-- Saturday card -->
+      <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-6 card-sheen">
+        <div class="flex items-center justify-between">
+          <h3 class="font-display font-bold text-white">Saturday-start</h3>
+          <span class="text-[10px] uppercase tracking-widest text-slate-300 border border-white/25 rounded-full px-2.5 py-1">Sat start</span>
+        </div>
+        <div class="mt-4 font-display text-6xl font-bold text-white num-tabular" id="satNum">–</div>
+        <p class="text-sm text-slate-300 mt-1">Week <span id="satNumSm" class="num-tabular">–</span> of calendar year <span id="satYear" class="num-tabular">–</span></p>
+        <p class="mt-3 text-sm text-slate-400">Runs <span id="satRange" class="text-slate-200 font-medium">–</span></p>
+        <p class="mt-2 text-xs text-slate-500">Week 1 starts on the year's first Saturday — the Islamic / Middle-East convention.</p>
+      </div>
+    </div>
+    <p id="boundaryNote" class="mt-5 hidden rounded-xl border border-limey/30 bg-limey/10 px-4 py-3 text-sm text-limey"></p>
+  </div>
+</section>
+
+<!-- ============ TOOL: REVERSE LOOKUP ============ -->
+<section id="reverseSection" class="no-print mx-auto max-w-6xl px-4 sm:px-6 pt-6">
+  <div class="rounded-3xl border border-white/10 bg-inkdeep/80 p-6 sm:p-10 card-sheen">
+    <h2 class="font-display text-2xl sm:text-3xl font-bold text-white">Reverse lookup: week number → dates</h2>
+    <p class="mt-1 text-slate-400 text-sm">Enter a year and a week number — get the exact 7-day range.</p>
+    <div class="mt-6 grid gap-4 sm:grid-cols-4">
+      <div>
+        <label for="revSystem" class="block text-xs uppercase tracking-widest text-slate-400 mb-1.5">System</label>
+        <select id="revSystem" class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-limey/60">
+          <option value="iso">ISO-8601 (Mon start)</option>
+          <option value="us">US (Sun start)</option>
+          <option value="sat">Saturday-start</option>
+        </select>
+      </div>
+      <div>
+        <label for="revYear" class="block text-xs uppercase tracking-widest text-slate-400 mb-1.5">Year</label>
+        <input id="revYear" type="number" min="1" max="9999" class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-white num-tabular focus:outline-none focus:ring-2 focus:ring-limey/60">
+      </div>
+      <div>
+        <label for="revWeek" class="block text-xs uppercase tracking-widest text-slate-400 mb-1.5">Week number</label>
+        <input id="revWeek" type="number" min="0" max="53" class="w-full rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-white num-tabular focus:outline-none focus:ring-2 focus:ring-limey/60">
+      </div>
+      <div class="flex items-end">
+        <button id="revGo" class="w-full rounded-xl bg-limey px-4 py-2.5 font-semibold text-ink hover:brightness-110 transition">Find dates</button>
+      </div>
+    </div>
+    <div id="revError" class="hidden mt-4 rounded-xl border border-red-400/40 bg-red-500/10 px-4 py-3 text-sm text-red-300"></div>
+    <div id="revResult" class="hidden mt-6 rounded-2xl border border-limey/30 bg-limey/[0.06] p-6 pop">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-xs uppercase tracking-widest text-limey" id="revLabel">ISO week 40, 2026</p>
+          <p class="mt-1 font-display text-2xl font-bold text-white" id="revDates">–</p>
+          <p class="mt-1 text-sm text-slate-400" id="revNote">–</p>
+        </div>
+        <button id="revCopy" class="rounded-full border border-limey/50 px-4 py-1.5 text-sm font-medium text-limey hover:bg-limey/10 transition">Copy</button>
+      </div>
+      <div id="revDays" class="mt-4 grid grid-cols-7 gap-1.5 text-center text-xs"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TOOL: QUARTER + WEEKS REMAINING ============ -->
+<section id="quarterSection" class="no-print mx-auto max-w-6xl px-4 sm:px-6 pt-6">
+  <div class="rounded-3xl border border-white/10 bg-inkdeep/80 p-6 sm:p-10 card-sheen">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-white">Quarters &amp; weeks remaining</h2>
+        <p class="mt-1 text-slate-400 text-sm">Where you stand in the year, in weeks.</p>
+      </div>
+      <div class="rounded-xl bg-plum/25 border border-plum/50 px-5 py-3 text-center">
+        <p class="text-[10px] uppercase tracking-widest text-purple-300">Weeks remaining this year</p>
+        <p class="font-display text-3xl font-bold text-limey num-tabular" id="qRemain">–</p>
+      </div>
+    </div>
+    <div id="quarterGrid" class="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4"></div>
+  </div>
+</section>
+<!-- ============ TOOL: PRINTABLE YEAR TABLE ============ -->
+<section id="tableSection" class="mx-auto max-w-6xl px-4 sm:px-6 pt-6">
+  <div class="rounded-3xl border border-white/10 bg-inkdeep/80 p-6 sm:p-10 card-sheen">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <div>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-white">Full year week table</h2>
+        <p class="mt-1 text-slate-400 text-sm">Every week of the year with exact dates — print it or save as PDF.</p>
+      </div>
+      <div class="no-print flex flex-wrap items-end gap-3">
+        <div>
+          <label for="tblYear" class="block text-xs uppercase tracking-widest text-slate-400 mb-1.5">Year</label>
+          <input id="tblYear" type="number" min="1" max="9999" class="w-32 rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-white num-tabular focus:outline-none focus:ring-2 focus:ring-limey/60">
+        </div>
+        <div>
+          <label for="tblSystem" class="block text-xs uppercase tracking-widest text-slate-400 mb-1.5">System</label>
+          <select id="tblSystem" class="rounded-xl bg-white/5 border border-white/15 px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-limey/60">
+            <option value="iso">ISO-8601</option>
+            <option value="us">US (Sun start)</option>
+            <option value="sat">Saturday-start</option>
+          </select>
+        </div>
+        <button id="tblGo" class="rounded-xl bg-plum px-5 py-2.5 font-semibold text-white hover:bg-plumdeep transition">Build table</button>
+        <button id="tblPrint" class="rounded-xl bg-limey px-5 py-2.5 font-semibold text-ink hover:brightness-110 transition">🖨 Print / PDF</button>
+      </div>
+    </div>
+    <p id="tblInfo" class="mt-4 text-sm text-slate-400"></p>
+    <div class="mt-4 max-h-[560px] overflow-auto rounded-2xl border border-white/10">
+      <table id="yearTable" class="w-full text-sm">
+        <thead class="sticky top-0">
+          <tr class="bg-plum text-white">
+            <th class="px-4 py-3 text-left font-semibold">Week</th>
+            <th class="px-4 py-3 text-left font-semibold">Starts</th>
+            <th class="px-4 py-3 text-left font-semibold">Ends</th>
+            <th class="px-4 py-3 text-left font-semibold">Span</th>
+          </tr>
+        </thead>
+        <tbody id="yearTableBody" class="num-tabular"></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ============ BOTTOM AD (verbatim) ============ -->
+<div class="no-print mx-auto max-w-6xl px-4 sm:px-6 pb-4" role="complementary" aria-label="Advertisement">
+  <div class="mx-auto text-center" style="max-width:728px">
+    <span class="block text-[10px] tracking-[0.18em] uppercase text-slate-400 mb-1.5">Advertisement</span>
+    <div class="flex justify-center overflow-hidden">
+      <script async src="https://js.wpadmngr.com/static/adManager.js" data-admpid="464498"></script>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SEO ARTICLE ============ -->
+<article id="seoSection" class="mx-auto max-w-4xl px-4 sm:px-6 py-10">
+  <h2 class="font-display text-3xl font-bold text-white">The complete guide to week numbers: ISO 8601, US weeks, and how to find any week's dates</h2>
+  <div class="mt-6 space-y-5 text-slate-300 leading-relaxed" id="seoArticle">
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">What is a week number?</h3>
+  <p>A week number is simply a label that tells you which week of the year a date falls in. Instead of saying "the last week of September," planners, payroll departments, factories, and project managers say "week 40." It is compact, unambiguous across languages, and perfect for scheduling. The catch is that there is more than one way to number the weeks of a year. The two dominant systems — ISO 8601 and the US traditional system — can assign a different number to the very same day, especially near New Year's Eve and New Year's Day. A third convention, used widely across the Middle East and parts of Asia and Africa, starts the week on Saturday. Knowing which system your calendar, employer, or software uses saves you from off-by-one errors in plans, reports, and deadlines.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">ISO 8601: the international standard</h3>
+  <p>ISO 8601 is the international standard for dates and times, maintained by the International Organization for Standardization and first published in 1988. Its week-date system is the one used across most of Europe, much of Asia, and in international business. Three rules define it. First, every week begins on Monday and ends on Sunday. Second, week 1 of a year is the week that contains the year's first Thursday — which is the same as saying it is the week that contains January 4th. Third, the ISO year of a week is the Gregorian year that contains that Thursday. This elegant rule means every ISO week belongs entirely to one ISO year, even when some of its days fall in December or January of a neighboring calendar year. The standard notation writes an ISO week date like 2026-W40, meaning the 40th week of ISO year 2026. Most programming languages and databases — from Python's isocalendar to SQL Server's iso_week — implement exactly this definition, which is why ISO week numbers are the safest choice for software, data pipelines, and anything crossing borders.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">US week numbering: Sunday start, January 1st anchored</h3>
+  <p>The traditional US convention works differently. Weeks begin on Sunday, and week 1 is simply the week that contains January 1st — or more precisely, in the widely used strftime %U definition, week 01 begins with the year's first Sunday, and any days before that first Sunday belong to week 00. This keeps every US week inside a single calendar year: a US week never borrows days from the previous December or the next January. Microsoft Excel's WEEKNUM function with its default setting follows a close cousin of this logic (Sunday start, week 1 contains January 1st), which is why American office calendars, school planners, and wall calendars show week numbers that differ from ISO around the turn of the year. For example, January 1, 2026 is a Thursday: under ISO 8601 it sits in week 1 of 2026, but under the US %U convention it sits in week 0, because the first Sunday does not arrive until January 4th. Neither answer is wrong — they just answer different questions.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">Saturday-start weeks: the Islamic convention</h3>
+  <p>In many countries across the Middle East, North Africa, and parts of Asia, the week is conventionally considered to begin on Saturday. This reflects long-standing weekend patterns — historically Thursday–Friday or Friday–Saturday weekends in several Gulf states — and it persists in calendars, newspapers, and broadcast schedules even where the official workweek has shifted. Numbering weeks from Saturday works exactly like the US system with a different anchor: week 1 is the week containing the year's first Saturday, and earlier days are week 0. Comparing the same date across Monday-start, Sunday-start, and Saturday-start systems reveals how much the "week number" depends on cultural convention rather than astronomy. If you schedule meetings or shipments with partners in Saudi Arabia, the UAE, Egypt, or Bangladesh, checking the Saturday-start week number avoids the classic confusion of arriving a day early or late.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">Why the same date can have three different week numbers</h3>
+  <p>The differences between systems only bite near year boundaries, but when they bite, they bite hard. Take December 29, 2025, a Monday. Under ISO 8601, its week contains Thursday, January 1, 2026 — so it is week 1 of ISO year 2026, and its week runs December 29 through January 4. Under the US system, December 29, 2025 is simply in week 52 of calendar year 2025, running December 28 through January 3. Under the Saturday-start system it is week 52 of 2025 as well, but running December 27 through January 2. Three systems, three labels, three different seven-day windows. For the vast middle of the year the labels usually agree or differ by a constant offset, but the date ranges they describe always start on different weekdays. This is why the WhichWeek comparison cards above show not just the numbers but the full Monday-to-Sunday, Sunday-to-Saturday, or Saturday-to-Friday range for each system: the number alone does not tell you which days are included.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">Can a year have 53 weeks?</h3>
+  <p>Yes — and it happens more often than most people expect. A year has 53 ISO weeks whenever January 1st falls on a Thursday, or on a Wednesday in a leap year. Recent and upcoming 53-week ISO years include 2015, 2020, 2026, and 2032. The extra week, sometimes called "week 53" or the "leap week," creates real-world consequences: an extra week of payroll for salaried staff paid weekly, an extra week of rent or subscription billing, and a thirteenth four-week accounting period for retailers. Many large retailers actually run a formal 52-53-week fiscal year, defined by the National Retail Federation, precisely to keep every accounting period exactly seven days long. In 2026, ISO week 53 runs from Monday, December 28, 2026 to Sunday, January 3, 2027 — a week that belongs to ISO year 2026 even though most of its days sit in calendar year 2027. If your budgets or contracts are defined in weeks, always check whether the year in question has 52 or 53 of them.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">Weeks, quarters, and the business calendar</h3>
+  <p>Businesses rarely think in months alone; they think in quarters, and quarters are built from weeks. A calendar quarter is three months, but thirteen weeks make a cleaner planning unit — which is why many companies use a 4-4-5 week quarter pattern (four weeks, four weeks, five weeks) for internal reporting. Knowing the current week number tells you instantly how far through the quarter you are and how many weeks remain to hit a target. The quarter panel above shows each quarter's date range alongside its ISO week span, so you can translate "Q3" into "weeks 27 through 39" without mental arithmetic. The "weeks remaining" figure is equally practical: with 14 weeks left in a 53-week year, a sales team knows exactly how many weekly run-rates stand between today and the annual target. Week-based thinking turns vague end-of-year pressure into a concrete countdown.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">How to convert a week number back into dates</h3>
+  <p>Reverse lookup — turning "week 40 of 2026" into actual calendar dates — is the feature most week-number sites forget, yet it is the one planners need most. Someone emails "deliver in week 40," and you need to know whether that means late September or early October, and on which weekday the week starts. The conversion depends on the system: ISO week 40 of 2026 runs Monday, September 28 to Sunday, October 4; US week 40 of 2026 runs Sunday, October 4 to Saturday, October 10; Saturday-start week 40 of 2026 runs Saturday, October 3 to Friday, October 9. The rule of thumb for ISO: find the Monday of week 1 (the Monday of the week containing January 4th), then add seven days per week. For US and Saturday-start systems: find the first Sunday or Saturday of the year, then add seven days per week, remembering that days before that first anchor day are week 0. The reverse-lookup tool above does this arithmetic for you, validates impossible inputs like "week 54," and shows every day of the resulting week.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">Week numbers in software: Excel, Google Sheets, SQL, and code</h3>
+  <p>If you work with data, you will meet week numbers in your tools whether you look for them or not. In Microsoft Excel, WEEKNUM defaults to the US-style Sunday-start system, while ISOWEEKNUM (available since Excel 2013) returns the ISO 8601 week — mixing the two in one spreadsheet is a classic source of silent errors. Google Sheets offers both ISOWEEKNUM and WEEKNUM with a type argument. In SQL Server, DATEPART(iso_week, date) gives the ISO week while DATEPART(week, date) depends on the session's DATEFIRST setting. Python's datetime.isocalendar() returns the ISO year, week, and weekday in one call. JavaScript has no built-in ISO week function, which is why every JS date library ships its own implementation — and why the math on this page is computed from first principles with the Thursday rule rather than trusting a shortcut. Whenever you store weeks in a database, store the underlying date as the source of truth and derive the week label in a documented view; implicit week functions differ across engines and versions.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">Everyday uses: payroll, projects, logistics, and health</h3>
+  <p>Week numbers quietly run large parts of modern life. Payroll departments process weekly and biweekly pay cycles by week number. Construction and manufacturing schedules are drawn as week-by-week Gantt bars; factory products are often stamped with a year-week code (you will find "2440" style stamps on tires, electronics, and food packaging). Logistics companies quote transit times in weeks and plan capacity around numbered weeks. Epidemiologists track disease surveillance by week — the US CDC's MMWR week system, which starts weeks on Sunday, is a cousin of the conventions compared on this page. Agile software teams run one- or two-week sprints anchored to week numbers. Even fitness and habit programs ("week 6 of the training plan") lean on the same idea. A shared, unambiguous week label is what lets a factory in Vietnam, a warehouse in Rotterdam, and a head office in Chicago agree on what "week 40" means.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">Fun facts about week numbers</h3>
+  <p>A few curiosities to impress your colleagues: the ISO week-numbering year can start as early as December 29 or as late as January 4 of the calendar year. Years that begin on a Thursday have 53 Thursdays — and 53 ISO weeks. The earliest possible date for ISO week 1 is December 29, which happens when January 1 is a Monday. Because the Gregorian calendar repeats every 400 years, the complete pattern of 52- and 53-week years repeats on a 400-year cycle. The "week date" format (2026-W40-2 for Tuesday of week 40) is fully specified in ISO 8601 and sorts alphabetically in chronological order — a neat property calendar dates lack. And the longest possible gap between the same week number in the US and ISO systems is a full week plus the year-boundary shift, which is why December dates deserve a double-check every single year.</p>
+
+  <h3 class="font-display text-xl font-bold text-white pt-2">How to use WhichWeek</h3>
+  <p>WhichWeek answers "what week number is it?" the moment the page loads — the giant number in the hero is today's ISO 8601 week, with the US and Saturday-start equivalents beside it. Use the date picker to check any past or future date and compare all three systems side by side, including the exact seven-day range each system assigns. Use reverse lookup when someone gives you a week number and you need the dates: pick the system, enter the year and week, and get the full range with every weekday listed. The quarter panel shows where you are in the year and how many weeks remain, and the year-table builder generates all 52 or 53 weeks with their date ranges — hit Print / PDF to export a clean, ad-free sheet for your wall or your reports. Everything runs entirely in your browser: no account, no tracking of your dates, no limits. Bookmark it, and never wonder which week it is again.</p>
+
+  </div>
+
+  <!-- FAQs -->
+  <h2 class="font-display text-2xl font-bold text-white mt-12 mb-4">Frequently asked questions</h2>
+  <div class="space-y-3" id="faqList">
+    <div class="faq-item rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+      <details>
+        <summary class="flex items-center justify-between gap-3 font-medium text-white">What week number is it right now?<span class="faq-chev text-limey">▾</span></summary>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">The hero number at the top of this page always shows the current ISO-8601 week for today, with the US and Saturday-start week numbers beside it. The page updates automatically every time you open it, so the number you see is always today's week — no calculation needed.</p>
+      </details>
+    </div>
+    <div class="faq-item rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+      <details>
+        <summary class="flex items-center justify-between gap-3 font-medium text-white">What is the difference between ISO 8601 and US week numbers?<span class="faq-chev text-limey">▾</span></summary>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">ISO 8601 weeks start on Monday, and week 1 is the week containing the year's first Thursday (equivalently, January 4th); ISO weeks can span year boundaries. US traditional weeks start on Sunday, week 1 begins with the year's first Sunday, days before that are week 0, and every week stays inside one calendar year. The same date near New Year can therefore carry a different number — and even a different year — in each system.</p>
+      </details>
+    </div>
+    <div class="faq-item rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+      <details>
+        <summary class="flex items-center justify-between gap-3 font-medium text-white">Can a year have 53 weeks?<span class="faq-chev text-limey">▾</span></summary>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Yes. Under ISO 8601, a year has 53 weeks when January 1st falls on a Thursday, or on a Wednesday in a leap year. Recent 53-week years include 2015, 2020, and 2026; the next is 2032. The extra week affects weekly payroll, billing cycles, and retail fiscal calendars, so always verify whether a given year has 52 or 53 weeks before planning by week.</p>
+      </details>
+    </div>
+    <div class="faq-item rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+      <details>
+        <summary class="flex items-center justify-between gap-3 font-medium text-white">How do I find the dates for a specific week number?<span class="faq-chev text-limey">▾</span></summary>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Use the reverse lookup tool above: choose your week-numbering system (ISO-8601, US, or Saturday-start), enter the year and the week number, and you will get the exact seven-day range with every weekday listed. Remember that the answer depends on the system — ISO week 40 and US week 40 of the same year cover different days.</p>
+      </details>
+    </div>
+    <div class="faq-item rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+      <details>
+        <summary class="flex items-center justify-between gap-3 font-medium text-white">Which countries start the week on Saturday?<span class="faq-chev text-limey">▾</span></summary>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">Saturday is the conventional first day of the week in many Middle Eastern, North African, and South Asian countries, including Saudi Arabia, the UAE, Egypt, and Bangladesh, reflecting historical Friday-based weekends. Calendars, TV schedules, and planners in these regions typically run Saturday to Friday, so the Saturday-start column on this page matches local convention there.</p>
+      </details>
+    </div>
+    <div class="faq-item rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
+      <details>
+        <summary class="flex items-center justify-between gap-3 font-medium text-white">How many weeks are left in the year, and what quarter is it?<span class="faq-chev text-limey">▾</span></summary>
+        <p class="mt-2 text-sm text-slate-400 leading-relaxed">The quarter panel above shows the current quarter, each quarter's date range with its ISO week span, and a live count of weeks remaining in the year. Weeks remaining is computed against the ISO week-numbering year (52 or 53 weeks), so the countdown stays correct even in 53-week years like 2026.</p>
+      </details>
+    </div>
+  </div>
+</article>
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "What week number is it right now?",
+      "acceptedAnswer": { "@type": "Answer", "text": "The WhichWeek page always shows the current ISO-8601 week for today in its hero, with the US and Saturday-start week numbers beside it. The page updates automatically every time you open it, so the number you see is always today's week." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is the difference between ISO 8601 and US week numbers?",
+      "acceptedAnswer": { "@type": "Answer", "text": "ISO 8601 weeks start on Monday and week 1 is the week containing the year's first Thursday; ISO weeks can span year boundaries. US traditional weeks start on Sunday, week 1 begins with the year's first Sunday, days before that are week 0, and every week stays inside one calendar year." }
+    },
+    {
+      "@type": "Question",
+      "name": "Can a year have 53 weeks?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Under ISO 8601 a year has 53 weeks when January 1st falls on a Thursday, or on a Wednesday in a leap year. Recent 53-week years include 2015, 2020 and 2026; the next is 2032." }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I find the dates for a specific week number?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Use a reverse lookup: choose the week-numbering system (ISO-8601, US, or Saturday-start), enter the year and week number, and get the exact seven-day range. The answer depends on the system — ISO week 40 and US week 40 of the same year cover different days." }
+    },
+    {
+      "@type": "Question",
+      "name": "Which countries start the week on Saturday?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Saturday is the conventional first day of the week in many Middle Eastern, North African and South Asian countries, including Saudi Arabia, the UAE, Egypt and Bangladesh, reflecting historical Friday-based weekends." }
+    },
+    {
+      "@type": "Question",
+      "name": "How many weeks are left in the year, and what quarter is it?",
+      "acceptedAnswer": { "@type": "Answer", "text": "WhichWeek's quarter panel shows the current quarter, each quarter's date range with its ISO week span, and a live count of weeks remaining in the year, computed against the 52- or 53-week ISO year." }
+    }
+  ]
+}
+</script>
+
+<!-- ============ FOOTER ============ -->
+<footer class="no-print border-t border-white/10 mt-8">
+  <div class="mx-auto max-w-6xl px-4 sm:px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <a href="#top" class="font-display text-lg font-bold text-limey">Which<span class="text-white">Week</span></a>
+    <p class="text-xs text-slate-500">Free week-number tools. All calculations run in your browser.</p>
+    <nav class="flex items-center gap-5 text-sm">
+      <a href="#top" class="text-slate-400 hover:text-limey transition">Home</a>
+      <a href="https://fixoraa.tech" class="text-slate-400 hover:text-limey transition">More Tools</a>
+    </nav>
+  </div>
+</footer>
+
+<script id="ww-lib">
+/* WhichWeek core logic — pure functions, no DOM. Inlined verbatim into whichweek.html at build time. */
+'use strict';
+
+var MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+var MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+var WEEKDAYS_SHORT = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+
+function fmtDate(d) {
+  return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+}
+
+function fmtLong(d) {
+  return WEEKDAYS_SHORT[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+function fmtFull(d) {
+  return WEEKDAYS[d.getDay()] + ', ' + MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear();
+}
+
+// Parse "YYYY-MM-DD"; returns a local Date or null on invalid input.
+function parseISODate(str) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(str || '').trim());
+  if (!m) return null;
+  var y = +m[1], mo = +m[2], da = +m[3];
+  if (mo < 1 || mo > 12 || da < 1 || da > 31) return null;
+  var d = new Date(y, mo - 1, da);
+  if (d.getFullYear() !== y || d.getMonth() !== mo - 1 || d.getDate() !== da) return null;
+  return d;
+}
+
+function isLeapYear(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+
+function dayOfYear(d) {
+  var start = new Date(d.getFullYear(), 0, 1);
+  return Math.floor((stripTime(d) - start) / 86400000) + 1;
+}
+
+function stripTime(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+
+function addDays(d, n) {
+  var r = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+/* ---------- ISO-8601 (weeks start Monday; week 1 = week with the year's first Thursday) ---------- */
+function isoWeek(d) {
+  var t = stripTime(d);
+  var dayIdx = (t.getDay() + 6) % 7;           // Monday = 0
+  var thursday = addDays(t, 3 - dayIdx);       // Thursday of this week decides the ISO year
+  var isoYear = thursday.getFullYear();
+  var jan4 = new Date(isoYear, 0, 4);
+  var jan4Idx = (jan4.getDay() + 6) % 7;
+  var week1Monday = addDays(jan4, -jan4Idx);
+  var week = Math.floor((stripTime(thursday) - week1Monday) / 604800000) + 1;
+  return { year: isoYear, week: week, start: addDays(week1Monday, (week - 1) * 7), end: addDays(week1Monday, (week - 1) * 7 + 6) };
+}
+
+function weeksInISOYear(y) {
+  var jan1 = new Date(y, 0, 1).getDay(); // 0=Sun..6=Sat
+  if (jan1 === 4) return 53;             // Jan 1 is Thursday
+  if (jan1 === 3 && isLeapYear(y)) return 53; // Jan 1 is Wednesday in a leap year
+  return 52;
+}
+
+/* ---------- Fixed-start weekday systems (US: Sunday start, Islamic: Saturday start).
+   Week 1 = the week containing the year's first <weekStart> day; days before it are week 0. ---------- */
+function weekStartInfo(d, weekStart) {
+  var t = stripTime(d);
+  var y = t.getFullYear();
+  var jan1 = new Date(y, 0, 1);
+  var first = addDays(jan1, (weekStart - jan1.getDay() + 7) % 7);
+  if (t.getTime() < first.getTime()) {
+    return { year: y, week: 0, start: addDays(first, -7), end: addDays(first, -1) };
+  }
+  var week = Math.floor((t.getTime() - first.getTime()) / 604800000) + 1;
+  return { year: y, week: week, start: addDays(first, (week - 1) * 7), end: addDays(first, (week - 1) * 7 + 6) };
+}
+
+function usWeek(d) { return weekStartInfo(d, 0); }
+function satWeek(d) { return weekStartInfo(d, 6); }
+
+function weeksInStartYear(y, weekStart) {
+  return weekStartInfo(new Date(y, 11, 31), weekStart).week;
+}
+
+function weeksInUSYear(y) { return weeksInStartYear(y, 0); }
+function weeksInSatYear(y) { return weeksInStartYear(y, 6); }
+
+/* ---------- Reverse lookup: year + week -> date range ---------- */
+function isoWeekRange(year, week) {
+  if (!Number.isInteger(year) || year < 1 || year > 9999) return { error: 'Please enter a valid year (1\u20139999).' };
+  var max = weeksInISOYear(year);
+  if (!Number.isInteger(week) || week < 1 || week > max)
+    return { error: 'ISO week ' + week + ' does not exist in ' + year + '. Valid weeks: 1\u2013' + max + '.' };
+  var jan4 = new Date(year, 0, 4);
+  var jan4Idx = (jan4.getDay() + 6) % 7;
+  var start = addDays(jan4, -jan4Idx + (week - 1) * 7);
+  return { year: year, week: week, start: start, end: addDays(start, 6) };
+}
+
+function startWeekRange(year, week, weekStart) {
+  if (!Number.isInteger(year) || year < 1 || year > 9999) return { error: 'Please enter a valid year (1\u20139999).' };
+  var max = weeksInStartYear(year, weekStart);
+  var label = weekStart === 0 ? 'US' : 'Saturday-start';
+  if (!Number.isInteger(week) || week < 0 || week > max)
+    return { error: label + ' week ' + week + ' does not exist in ' + year + '. Valid weeks: 0\u2013' + max + '.' };
+  var jan1 = new Date(year, 0, 1);
+  var first = addDays(jan1, (weekStart - jan1.getDay() + 7) % 7);
+  var start = addDays(first, (week - 1) * 7);
+  return { year: year, week: week, start: start, end: addDays(start, 6) };
+}
+
+/* ---------- Extras ---------- */
+function quarterOf(d) { return Math.ceil((d.getMonth() + 1) / 3); }
+
+function quarterRange(year, q) {
+  var start = new Date(year, (q - 1) * 3, 1);
+  var end = new Date(year, q * 3, 0);
+  return { start: start, end: end };
+}
+
+// ISO week span of a quarter: weeks anchored by the Thursday inside each week.
+function quarterWeekSpan(year, q) {
+  var r = quarterRange(year, q);
+  var startT = stripTime(r.start), endT = stripTime(r.end);
+  var dayIdx = (startT.getDay() + 6) % 7;      // Mon=0
+  var firstThu = addDays(startT, 3 - dayIdx);  // Thursday of the week containing Q-start
+  if (firstThu.getTime() < startT.getTime()) firstThu = addDays(firstThu, 7);
+  var lastThu = firstThu;
+  while (addDays(lastThu, 7).getTime() <= endT.getTime()) lastThu = addDays(lastThu, 7);
+  var w1 = isoWeek(firstThu), w2 = isoWeek(lastThu);
+  return { isoYearStart: w1.year, from: w1.week, isoYearEnd: w2.year, to: w2.week };
+}
+
+function weeksRemaining(d) {
+  var info = isoWeek(d);
+  var total = weeksInISOYear(info.year);
+  return { isoYear: info.year, current: info.week, total: total,
+           includingThis: total - info.week + 1, afterThis: total - info.week };
+}
+
+function yearProgress(d) {
+  var days = isLeapYear(d.getFullYear()) ? 366 : 365;
+  return dayOfYear(d) / days;
+}
+
+function allWeeksOfYear(year, system) {
+  // system: 'iso' | 'us' | 'sat'
+  var weeks = [];
+  var max = system === 'iso' ? weeksInISOYear(year) : weeksInStartYear(year, system === 'us' ? 0 : 6);
+  var min = system === 'iso' ? 1 : 0;
+  for (var w = min; w <= max; w++) {
+    var r = system === 'iso' ? isoWeekRange(year, w)
+          : startWeekRange(year, w, system === 'us' ? 0 : 6);
+    weeks.push({ week: w, start: r.start, end: r.end });
+  }
+  return weeks;
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    pad2: pad2, fmtDate: fmtDate, fmtLong: fmtLong, fmtFull: fmtFull,
+    parseISODate: parseISODate, isLeapYear: isLeapYear, dayOfYear: dayOfYear,
+    stripTime: stripTime, addDays: addDays,
+    isoWeek: isoWeek, weeksInISOYear: weeksInISOYear,
+    weekStartInfo: weekStartInfo, usWeek: usWeek, satWeek: satWeek,
+    weeksInUSYear: weeksInUSYear, weeksInSatYear: weeksInSatYear,
+    isoWeekRange: isoWeekRange, startWeekRange: startWeekRange,
+    quarterOf: quarterOf, quarterRange: quarterRange, quarterWeekSpan: quarterWeekSpan,
+    weeksRemaining: weeksRemaining, yearProgress: yearProgress, allWeeksOfYear: allWeeksOfYear,
+    MONTHS: MONTHS, MONTHS_SHORT: MONTHS_SHORT, WEEKDAYS: WEEKDAYS, WEEKDAYS_SHORT: WEEKDAYS_SHORT
+  };
+}
+
+</script>
+
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var today = new Date();
+
+  function shortRange(r) { return fmtLong(r.start) + ' – ' + fmtLong(r.end); }
+
+  /* ---------- Hero ---------- */
+  function renderHero() {
+    var now = new Date();
+    var iso = isoWeek(now);
+    $('heroWeek').textContent = iso.week;
+    $('heroDate').textContent = fmtFull(now);
+    $('heroUS').textContent = 'W' + usWeek(now).week;
+    $('heroSat').textContent = 'W' + satWeek(now).week;
+    $('heroQ').textContent = 'Q' + quarterOf(now);
+    var rem = weeksRemaining(now);
+    $('heroRemain').textContent = rem.includingThis;
+    var pct = Math.round(yearProgress(now) * 100);
+    $('yearPct').textContent = pct + '% of ' + now.getFullYear();
+    $('yearBar').style.width = pct + '%';
+  }
+
+  /* ---------- Date finder ---------- */
+  function renderFinder() {
+    var val = $('dateInput').value;
+    var d = parseISODate(val) || new Date();
+    var iso = isoWeek(d), us = usWeek(d), sat = satWeek(d);
+    $('isoNum').textContent = iso.week; $('isoNumSm').textContent = iso.week; $('isoYear').textContent = iso.year;
+    $('isoRange').textContent = shortRange(iso);
+    $('usNum').textContent = us.week; $('usNumSm').textContent = us.week; $('usYear').textContent = us.year;
+    $('usRange').textContent = shortRange(us);
+    $('satNum').textContent = sat.week; $('satNumSm').textContent = sat.week; $('satYear').textContent = sat.year;
+    $('satRange').textContent = shortRange(sat);
+    var note = $('boundaryNote');
+    if (iso.year !== d.getFullYear() || us.week === 0 || sat.week === 0) {
+      var bits = [];
+      if (iso.year !== d.getFullYear()) bits.push('ISO assigns this date to ISO year ' + iso.year);
+      if (us.week === 0) bits.push('US week 0: these days come before the first Sunday of ' + d.getFullYear());
+      if (sat.week === 0) bits.push('Saturday-start week 0: these days come before the first Saturday of ' + d.getFullYear());
+      note.textContent = '⚠ Year-boundary date: ' + bits.join(' · ');
+      note.classList.remove('hidden');
+    } else { note.classList.add('hidden'); }
+    try { localStorage.setItem('whichweek-date', fmtDate(d)); } catch (e) {}
+  }
+
+  /* ---------- Reverse lookup ---------- */
+  function renderReverse() {
+    var sys = $('revSystem').value;
+    var year = parseInt($('revYear').value, 10);
+    var week = parseInt($('revWeek').value, 10);
+    var errBox = $('revError'), resBox = $('revResult');
+    errBox.classList.add('hidden'); resBox.classList.add('hidden');
+    if (isNaN(year) || isNaN(week)) {
+      errBox.textContent = 'Please enter both a year and a week number.';
+      errBox.classList.remove('hidden'); return;
+    }
+    var r = sys === 'iso' ? isoWeekRange(year, week) : startWeekRange(year, week, sys === 'us' ? 0 : 6);
+    if (r.error) { errBox.textContent = r.error; errBox.classList.remove('hidden'); return; }
+    var sysName = sys === 'iso' ? 'ISO-8601' : (sys === 'us' ? 'US' : 'Saturday-start');
+    var startName = sys === 'iso' ? 'Monday' : (sys === 'us' ? 'Sunday' : 'Saturday');
+    var endName = sys === 'iso' ? 'Sunday' : (sys === 'us' ? 'Saturday' : 'Friday');
+    $('revLabel').textContent = sysName + ' week ' + week + ', ' + year;
+    $('revDates').textContent = fmtFull(r.start) + ' → ' + fmtFull(r.end);
+    var sameMonth = r.start.getMonth() === r.end.getMonth() && r.start.getFullYear() === r.end.getFullYear();
+    $('revNote').textContent = startName + '–' + endName + ' · ' +
+      (sameMonth ? 'entirely within ' + MONTHS[r.start.getMonth()] + ' ' + r.start.getFullYear()
+                 : 'spans ' + MONTHS_SHORT[r.start.getMonth()] + ' → ' + MONTHS_SHORT[r.end.getMonth()]);
+    var days = $('revDays'); days.innerHTML = '';
+    for (var i = 0; i < 7; i++) {
+      var dd = addDays(r.start, i);
+      var cell = document.createElement('div');
+      cell.className = 'rounded-lg border border-white/10 bg-white/[0.04] px-1 py-2';
+      cell.innerHTML = '<div class="text-slate-500">' + WEEKDAYS_SHORT[dd.getDay()] + '</div>' +
+        '<div class="font-display font-bold text-white num-tabular text-sm">' + dd.getDate() + '</div>' +
+        '<div class="text-slate-500">' + MONTHS_SHORT[dd.getMonth()] + '</div>';
+      days.appendChild(cell);
+    }
+    resBox.classList.remove('hidden');
+    try { localStorage.setItem('whichweek-rev', JSON.stringify({ sys: sys, year: year, week: week })); } catch (e) {}
+  }
+
+  /* ---------- Quarters ---------- */
+  function renderQuarters() {
+    var now = new Date();
+    var y = now.getFullYear(), cq = quarterOf(now);
+    var rem = weeksRemaining(now);
+    $('qRemain').textContent = rem.includingThis + ' of ' + rem.total;
+    var grid = $('quarterGrid'); grid.innerHTML = '';
+    for (var q = 1; q <= 4; q++) {
+      var r = quarterRange(y, q);
+      var span = quarterWeekSpan(y, q);
+      var card = document.createElement('div');
+      var cur = q === cq;
+      card.className = 'rounded-2xl border p-5 ' + (cur ? 'border-limey/60 bg-limey/[0.07]' : 'border-white/10 bg-white/[0.03]');
+      var spanTxt = 'W' + span.from + '–W' + span.to + (span.isoYearStart !== span.isoYearEnd ? ' (ISO ' + span.isoYearStart + '→' + span.isoYearEnd + ')' : ' (ISO ' + span.isoYearStart + ')');
+      card.innerHTML =
+        '<div class="flex items-center justify-between"><p class="font-display text-lg font-bold ' + (cur ? 'text-limey' : 'text-white') + '">Q' + q + '</p>' +
+        (cur ? '<span class="text-[10px] uppercase tracking-widest text-ink bg-limey rounded-full px-2.5 py-1 font-bold">current</span>' : '') + '</div>' +
+        '<p class="mt-2 text-sm text-slate-300">' + fmtLong(r.start) + '<br><span class="text-slate-500">to</span> ' + fmtLong(r.end) + '</p>' +
+        '<p class="mt-2 text-xs text-slate-400">ISO weeks <span class="text-slate-200 font-medium num-tabular">' + spanTxt + '</span></p>';
+      grid.appendChild(card);
+    }
+  }
+
+  /* ---------- Year table ---------- */
+  var SYS_LABEL = { iso: 'ISO-8601 (Mon–Sun)', us: 'US (Sun–Sat)', sat: 'Saturday-start (Sat–Fri)' };
+  function renderTable() {
+    var year = parseInt($('tblYear').value, 10);
+    var sys = $('tblSystem').value;
+    if (isNaN(year) || year < 1 || year > 9999) { $('tblInfo').textContent = 'Enter a valid year (1–9999).'; return; }
+    var weeks = allWeeksOfYear(year, sys);
+    var nowIso = isoWeek(new Date());
+    var tbody = $('yearTableBody'); tbody.innerHTML = '';
+    weeks.forEach(function (w) {
+      var tr = document.createElement('tr');
+      var isCur = sys === 'iso' && year === nowIso.year && w.week === nowIso.week;
+      tr.className = 'border-t border-white/10 ' + (isCur ? 'bg-limey/15' : (w.week % 2 ? 'bg-white/[0.02]' : ''));
+      var spanSame = w.start.getMonth() === w.end.getMonth();
+      tr.innerHTML = '<td class="px-4 py-2.5 font-bold ' + (isCur ? 'text-limey' : 'text-white') + '">' + w.week + (isCur ? ' ◀ today' : '') + '</td>' +
+        '<td class="px-4 py-2.5">' + fmtLong(w.start) + '</td>' +
+        '<td class="px-4 py-2.5">' + fmtLong(w.end) + '</td>' +
+        '<td class="px-4 py-2.5 text-slate-400">' + (spanSame ? MONTHS[w.start.getMonth()] : MONTHS_SHORT[w.start.getMonth()] + ' → ' + MONTHS_SHORT[w.end.getMonth()]) + '</td>';
+      tbody.appendChild(tr);
+    });
+    var weeks53 = sys === 'iso' ? weeksInISOYear(year) === 53 : true;
+    $('tblInfo').innerHTML = '<strong class="text-white num-tabular">' + weeks.length + ' weeks</strong> in ' + year +
+      ' (' + SYS_LABEL[sys] + ')' + (sys === 'iso' && weeks.length === 53 ? ' — <span class="text-limey font-medium">' + year + ' is a 53-week ISO year</span>' : '') + '.';
+  }
+
+  function doPrint() {
+    document.body.classList.add('print-table');
+    window.print();
+    setTimeout(function () { document.body.classList.remove('print-table'); }, 500);
+  }
+
+  /* ---------- init ---------- */
+  function init() {
+    renderHero();
+    var saved = null;
+    try { saved = localStorage.getItem('whichweek-date'); } catch (e) {}
+    $('dateInput').value = (saved && parseISODate(saved)) ? saved : fmtDate(today);
+    renderFinder();
+    var isoNow = isoWeek(today);
+    var savedRev = null;
+    try { savedRev = JSON.parse(localStorage.getItem('whichweek-rev') || 'null'); } catch (e) {}
+    $('revSystem').value = (savedRev && savedRev.sys) || 'iso';
+    $('revYear').value = (savedRev && savedRev.year) || today.getFullYear();
+    $('revWeek').value = (savedRev && typeof savedRev.week === 'number') ? savedRev.week : isoNow.week;
+    $('tblYear').value = today.getFullYear();
+    renderTable(); renderQuarters();
+    $('dateInput').addEventListener('change', renderFinder);
+    $('revGo').addEventListener('click', renderReverse);
+    ['revSystem', 'revYear', 'revWeek'].forEach(function (id) {
+      $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') renderReverse(); });
+    });
+    $('revSystem').addEventListener('change', renderReverse);
+    $('revCopy').addEventListener('click', function () {
+      var t = $('revLabel').textContent + ': ' + $('revDates').textContent;
+      if (navigator.clipboard) navigator.clipboard.writeText(t).then(function () {
+        $('revCopy').textContent = 'Copied ✓'; setTimeout(function () { $('revCopy').textContent = 'Copy'; }, 1500);
+      });
+    });
+    $('tblGo').addEventListener('click', renderTable);
+    $('tblSystem').addEventListener('change', renderTable);
+    $('tblPrint').addEventListener('click', doPrint);
+    window.addEventListener('beforeprint', function () { document.body.classList.add('print-table'); });
+    window.addEventListener('afterprint', function () { document.body.classList.remove('print-table'); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+</script>
+</body>
+</html>
